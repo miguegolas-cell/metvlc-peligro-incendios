@@ -23,7 +23,7 @@ LAYERS_JSON = DOCS_DIR / "layers.json"
 METADATA_JSON = DOCS_DIR / "metadata.json"
 
 
-# Paleta oficial detectada en SLD/QML de AEMET
+# Paleta oficial detectada en los estilos SLD/QML de AEMET
 COLORS = {
     1: (75, 150, 227, 210),   # Muy bajo
     2: (81, 209, 246, 210),   # Bajo
@@ -129,7 +129,8 @@ def extract_download(download_path: Path, extract_dir: Path):
         print(sample)
 
     raise RuntimeError(
-        "La descarga no es TAR.GZ, ZIP ni GeoTIFF. Probablemente AEMET ha devuelto HTML/JSON o una respuesta no esperada."
+        "La descarga no es TAR.GZ, ZIP ni GeoTIFF. "
+        "Probablemente AEMET ha devuelto HTML/JSON o una respuesta no esperada."
     )
 
 
@@ -149,6 +150,7 @@ def get_day_code(path: Path) -> str:
     Extrae D00, D01, D02... del nombre del archivo.
     """
     match = re.search(r"_D(\d{2})", path.name, re.IGNORECASE)
+
     if match:
         return f"D{match.group(1)}"
 
@@ -223,8 +225,26 @@ def main():
 
         tifs = find_tifs(extract_dir)
 
+        # Nos quedamos solo con los archivos de Península y Baleares.
+        # AEMET usa "_p_" para Península/Baleares y "_c_" para Canarias.
+        tifs = [
+            tif for tif in tifs
+            if "_p_" in tif.name.lower()
+        ]
+
         if not tifs:
-            raise RuntimeError("No se han encontrado archivos .tif en la descarga.")
+            raise RuntimeError(
+                "No se han encontrado archivos .tif de Península/Baleares (_p_) en la descarga."
+            )
+
+        print("Archivos GeoTIFF seleccionados para Península/Baleares:")
+        for tif in tifs:
+            print(" -", tif.name)
+
+        # Limpieza de capas antiguas para evitar restos de ejecuciones anteriores
+        for old_png in DOCS_DIR.glob("peligro_D*.png"):
+            print("Eliminando capa antigua:", old_png.name)
+            old_png.unlink()
 
         layers = []
 
@@ -277,6 +297,7 @@ def main():
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "num_layers": len(layers),
                 "layers": [layer["day"] for layer in layers],
+                "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_).",
             }, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
