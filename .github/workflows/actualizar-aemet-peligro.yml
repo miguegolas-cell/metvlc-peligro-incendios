@@ -38,6 +38,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/*.png docs/*.json data/aemet_incendios_download.zip
+          git add docs/*.png docs/*.json data/aemet_incendios_download.bin
           git commit -m "Actualiza peligro incendios AEMET" || echo "Sin cambios que guardar"
           git push
