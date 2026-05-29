@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 import re
 import zipfile
+import tarfile
 import tempfile
 import requests
 import numpy as np
@@ -75,14 +76,37 @@ def download_file(url: str, out_path: Path) -> Path:
     return out_path
 
 
+def safe_extract_tar(tar: tarfile.TarFile, path: Path):
+    """
+    Extrae TAR de forma segura evitando rutas peligrosas.
+    """
+    base_path = path.resolve()
+
+    for member in tar.getmembers():
+        member_path = (path / member.name).resolve()
+
+        if not str(member_path).startswith(str(base_path)):
+            raise RuntimeError(f"Ruta insegura dentro del TAR: {member.name}")
+
+    tar.extractall(path)
+
+
 def extract_download(download_path: Path, extract_dir: Path):
     """
     AEMET puede devolver:
-    - ZIP con TIF/QML/SLD
+    - TAR.GZ
+    - ZIP
     - TIF directo
-    - HTML de error
+    - HTML/JSON de error
     """
+
     print("Comprobando tipo de archivo descargado...")
+
+    if tarfile.is_tarfile(download_path):
+        print("Detectado TAR/TAR.GZ. Extrayendo...")
+        with tarfile.open(download_path, "r:*") as tar:
+            safe_extract_tar(tar, extract_dir)
+        return
 
     if zipfile.is_zipfile(download_path):
         print("Detectado ZIP. Extrayendo...")
@@ -96,8 +120,8 @@ def extract_download(download_path: Path, extract_dir: Path):
         target.write_bytes(download_path.read_bytes())
         return
 
-    # Si llega aquí, probablemente es HTML o JSON de error
     sample = download_path.read_bytes()[:800]
+
     try:
         print("Primeros caracteres de la descarga:")
         print(sample.decode("utf-8", errors="replace"))
@@ -105,7 +129,7 @@ def extract_download(download_path: Path, extract_dir: Path):
         print(sample)
 
     raise RuntimeError(
-        "La descarga no es ZIP ni GeoTIFF. Probablemente AEMET ha devuelto HTML/JSON o una respuesta no esperada."
+        "La descarga no es TAR.GZ, ZIP ni GeoTIFF. Probablemente AEMET ha devuelto HTML/JSON o una respuesta no esperada."
     )
 
 
@@ -121,16 +145,25 @@ def find_tifs(folder: Path):
 
 
 def get_day_code(path: Path) -> str:
+    """
+    Extrae D00, D01, D02... del nombre del archivo.
+    """
     match = re.search(r"_D(\d{2})", path.name, re.IGNORECASE)
     if match:
         return f"D{match.group(1)}"
+
     return "D00"
 
 
 def get_date_from_name(path: Path) -> str:
+    """
+    Extrae fecha tipo 20260528 del nombre.
+    """
     match = re.search(r"(\d{8})", path.name)
+
     if match:
         return match.group(1)
+
     return ""
 
 
@@ -177,7 +210,6 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
 
-        # Guardamos primero con nombre genérico
         download_path = DATA_DIR / "aemet_incendios_download.bin"
 
         print("Descargando datos AEMET...")
