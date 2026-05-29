@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>MetVlc · Peligro de incendios AEMET</title>
 
   <link
@@ -129,7 +128,7 @@
 
     <div class="header">
       <h1>Peligro de incendios forestales</h1>
-      <p>Producto georreferenciado oficial · Fuente: AEMET</p>
+      <p>Producto georreferenciado oficial · Fuente: AEMET · Recorte Comunidad Valenciana</p>
     </div>
 
     <div class="controls" id="layerButtons">
@@ -165,16 +164,30 @@
   <script>
     let layersInfo = null;
     let currentOverlay = null;
-    let currentLayer = null;
+    let cvGeoJson = null;
+    let cvBoundaryLayer = null;
+    let cvMaskLayer = null;
+    let cvBounds = null;
+    let updatedUTC = "";
 
     const map = L.map("map", {
-      preferCanvas: true
-    }).setView([39.5, -1.0], 7);
+      preferCanvas: true,
+      zoomControl: true
+    }).setView([39.5, -0.5], 8);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 12,
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
+
+    map.createPane("rasterPane");
+    map.getPane("rasterPane").style.zIndex = 320;
+
+    map.createPane("maskPane");
+    map.getPane("maskPane").style.zIndex = 340;
+
+    map.createPane("boundaryPane");
+    map.getPane("boundaryPane").style.zIndex = 360;
 
     function dayLabel(day) {
       if (day === "D00") return "Hoy";
@@ -188,9 +201,99 @@
       });
 
       const btn = document.getElementById("btn-" + day);
-      if (btn) {
-        btn.classList.add("active");
+      if (btn) btn.classList.add("active");
+    }
+
+    function buildButtons(layers) {
+      const container = document.getElementById("layerButtons");
+      container.innerHTML = "";
+
+      layers.forEach(layer => {
+        const btn = document.createElement("button");
+        btn.id = "btn-" + layer.day;
+        btn.textContent = dayLabel(layer.day);
+        btn.onclick = function() {
+          drawLayer(layer);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function ringToLatLngs(ring) {
+      return ring.map(coord => [coord[1], coord[0]]);
+    }
+
+    function getMainOuterRing(feature) {
+      const geom = feature.geometry;
+
+      if (geom.type === "Polygon") {
+        return geom.coordinates[0];
       }
+
+      if (geom.type === "MultiPolygon") {
+        let best = null;
+        let bestLen = 0;
+
+        geom.coordinates.forEach(poly => {
+          if (poly[0] && poly[0].length > bestLen) {
+            best = poly[0];
+            bestLen = poly[0].length;
+          }
+        });
+
+        return best;
+      }
+
+      return null;
+    }
+
+    function drawCVBoundary(geojson) {
+      if (cvBoundaryLayer) {
+        map.removeLayer(cvBoundaryLayer);
+      }
+
+      cvBoundaryLayer = L.geoJSON(geojson, {
+        pane: "boundaryPane",
+        style: {
+          color: "#0b2f4f",
+          weight: 2.2,
+          fill: false,
+          opacity: 1
+        }
+      }).addTo(map);
+
+      cvBounds = cvBoundaryLayer.getBounds();
+    }
+
+    function drawCVMask(geojson) {
+      if (cvMaskLayer) {
+        map.removeLayer(cvMaskLayer);
+      }
+
+      const feature = geojson.features[0];
+      const outerRing = getMainOuterRing(feature);
+
+      if (!outerRing) return;
+
+      const outerWorld = [
+        [90, -180],
+        [90, 180],
+        [-90, 180],
+        [-90, -180]
+      ];
+
+      const hole = ringToLatLngs(outerRing);
+
+      cvMaskLayer = L.polygon(
+        [outerWorld, hole],
+        {
+          pane: "maskPane",
+          stroke: false,
+          fillColor: "#f9f9fe",
+          fillOpacity: 0.92,
+          interactive: false
+        }
+      ).addTo(map);
     }
 
     function drawLayer(layer) {
@@ -208,74 +311,71 @@
       ];
 
       currentOverlay = L.imageOverlay(layer.png, bounds, {
-        opacity: 0.78,
+        pane: "rasterPane",
+        opacity: 0.80,
         interactive: false
       }).addTo(map);
 
-      currentLayer = layer;
-
-      map.fitBounds(bounds, {
-        padding: [15, 15]
-      });
-
       setActiveButton(layer.day);
+
+      if (cvBounds) {
+        map.fitBounds(cvBounds, {
+          padding: [10, 10]
+        });
+      } else {
+        map.fitBounds(bounds, {
+          padding: [15, 15]
+        });
+      }
 
       document.getElementById("metadata").innerHTML = `
         <b>Fuente:</b> AEMET ·
         <b>Capa:</b> ${dayLabel(layer.day)} ·
         <b>Archivo:</b> ${layer.source_file || ""}<br>
         Producto automático de peligro de incendios forestales basado en datos meteorológicos.
+        Recorte visual centrado en la Comunitat Valenciana.
+        <br><b>Actualizado:</b> ${updatedUTC || "—"}
       `;
     }
 
-    function buildButtons(layers) {
-      const container = document.getElementById("layerButtons");
-      container.innerHTML = "";
-
-      layers.forEach(layer => {
-        const btn = document.createElement("button");
-        btn.id = "btn-" + layer.day;
-        btn.textContent = dayLabel(layer.day);
-        btn.onclick = function() {
-          drawLayer(layer);
-        };
-
-        container.appendChild(btn);
-      });
-    }
-
-    fetch("layers.json?v=" + new Date().getTime())
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("No se pudo cargar layers.json");
-        }
-        return response.json();
+    Promise.all([
+      fetch("layers.json?v=" + new Date().getTime()).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar layers.json");
+        return r.json();
+      }),
+      fetch("cv.geojson?v=" + new Date().getTime()).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar cv.geojson");
+        return r.json();
       })
-      .then(data => {
-        layersInfo = data;
+    ])
+    .then(([layersData, cvData]) => {
+      layersInfo = layersData;
+      cvGeoJson = cvData;
+      updatedUTC = layersData.updated_utc || "";
 
-        if (!data.layers || data.layers.length === 0) {
-          throw new Error("layers.json no contiene capas");
-        }
+      if (!layersData.layers || layersData.layers.length === 0) {
+        throw new Error("layers.json no contiene capas");
+      }
 
-        buildButtons(data.layers);
+      drawCVBoundary(cvGeoJson);
+      drawCVMask(cvGeoJson);
 
-        const firstLayer = data.layers[0];
-        drawLayer(firstLayer);
+      buildButtons(layersData.layers);
 
-        const updated = data.updated_utc || "";
+      const firstLayer = layersData.layers[0];
+      drawLayer(firstLayer);
 
-        document.getElementById("metadata").innerHTML += `
-          <br><b>Actualizado:</b> ${updated}
-        `;
-      })
-      .catch(error => {
-        document.getElementById("layerButtons").innerHTML =
-          "No se han podido cargar las capas.";
-        document.getElementById("metadata").innerHTML =
-          "Error al cargar el producto de peligro de incendios AEMET.";
-        console.error(error);
-      });
+      if (cvBounds) {
+        map.setMaxBounds(cvBounds.pad(0.25));
+      }
+    })
+    .catch(error => {
+      document.getElementById("layerButtons").innerHTML =
+        "No se han podido cargar las capas.";
+      document.getElementById("metadata").innerHTML =
+        "Error al cargar el producto de peligro de incendios AEMET.";
+      console.error(error);
+    });
   </script>
 
 </body>
