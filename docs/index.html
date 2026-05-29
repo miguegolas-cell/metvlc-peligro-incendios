@@ -1,9 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>MetVlc · Peligro de incendios AEMET</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
 
   <style>
     body {
@@ -13,44 +19,264 @@
       color: #263238;
     }
 
-    .contenedor {
-      max-width: 1100px;
-      margin: 40px auto;
+    .page {
+      max-width: 1200px;
+      margin: 25px auto;
       background: #ffffff;
       border-radius: 16px;
-      padding: 30px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0b2f4f 0%, #0b6fa4 65%, #ff6a2a 100%);
+      color: white;
+      padding: 18px 24px;
       text-align: center;
     }
 
-    h1 {
-      margin: 0 0 10px;
-      color: #0b2f4f;
+    .header h1 {
+      margin: 0;
+      font-size: 25px;
+      letter-spacing: 0.4px;
       text-transform: uppercase;
     }
 
-    .aviso {
-      margin-top: 20px;
-      padding: 16px;
+    .header p {
+      margin: 6px 0 0;
+      font-size: 14px;
+      color: #e8f5ff;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 15px;
+      background: #f6f9fb;
+      border-bottom: 1px solid #dfe8ee;
+    }
+
+    .controls button {
+      border: 0;
+      padding: 9px 15px;
       border-radius: 10px;
-      background: #eef6fb;
-      border-left: 6px solid #0b6fa4;
-      text-align: left;
-      line-height: 1.6;
+      background: #0b2f4f;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      transition: 0.2s ease;
+    }
+
+    .controls button:hover {
+      background: #14527d;
+    }
+
+    .controls button.active {
+      background: #ff6a2a;
+    }
+
+    #map {
+      width: 100%;
+      height: 720px;
+      background: #dce8ee;
+    }
+
+    .legend {
+      padding: 14px 18px;
+      background: #ffffff;
+      border-top: 1px solid #dfe8ee;
+      font-size: 14px;
+      line-height: 1.8;
+      text-align: center;
+    }
+
+    .legend span {
+      display: inline-block;
+      width: 18px;
+      height: 14px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+
+    .meta {
+      font-size: 13px;
+      color: #51636d;
+      padding: 0 18px 18px;
+      background: #ffffff;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    @media screen and (max-width: 900px) {
+      .header h1 {
+        font-size: 21px;
+      }
+
+      #map {
+        height: 560px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <div class="contenedor">
-    <h1>Peligro de incendios forestales AEMET</h1>
-    <p>Visor en preparación para datos georreferenciados oficiales de AEMET.</p>
+  <div class="page">
 
-    <div class="aviso">
-      Si ves esta página publicada desde GitHub Pages, el primer paso está correcto.
+    <div class="header">
+      <h1>Peligro de incendios forestales</h1>
+      <p>Producto georreferenciado oficial · Fuente: AEMET</p>
     </div>
+
+    <div class="controls" id="layerButtons">
+      Cargando capas...
+    </div>
+
+    <div id="map"></div>
+
+    <div class="legend">
+      <b>Leyenda:</b>
+      &nbsp;&nbsp;
+      <span style="background:#4B96E3;"></span> Muy bajo
+      &nbsp;&nbsp;
+      <span style="background:#51D1F6;"></span> Bajo
+      &nbsp;&nbsp;
+      <span style="background:#57E520;"></span> Moderado
+      &nbsp;&nbsp;
+      <span style="background:#F9FB2F;"></span> Alto
+      &nbsp;&nbsp;
+      <span style="background:#EF8504;"></span> Muy alto
+      &nbsp;&nbsp;
+      <span style="background:#F52300;"></span> Extremo
+    </div>
+
+    <div class="meta" id="metadata">
+      Cargando metadatos...
+    </div>
+
   </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    let layersInfo = null;
+    let currentOverlay = null;
+    let currentLayer = null;
+
+    const map = L.map("map", {
+      preferCanvas: true
+    }).setView([39.5, -1.0], 7);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 12,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    function dayLabel(day) {
+      if (day === "D00") return "Hoy";
+      if (day === "D01") return "Mañana";
+      return day.replace("D", "D+");
+    }
+
+    function setActiveButton(day) {
+      document.querySelectorAll(".controls button").forEach(btn => {
+        btn.classList.remove("active");
+      });
+
+      const btn = document.getElementById("btn-" + day);
+      if (btn) {
+        btn.classList.add("active");
+      }
+    }
+
+    function drawLayer(layer) {
+      if (!layer) return;
+
+      if (currentOverlay) {
+        map.removeLayer(currentOverlay);
+      }
+
+      const b = layer.bounds;
+
+      const bounds = [
+        [b.south, b.west],
+        [b.north, b.east]
+      ];
+
+      currentOverlay = L.imageOverlay(layer.png, bounds, {
+        opacity: 0.78,
+        interactive: false
+      }).addTo(map);
+
+      currentLayer = layer;
+
+      map.fitBounds(bounds, {
+        padding: [15, 15]
+      });
+
+      setActiveButton(layer.day);
+
+      document.getElementById("metadata").innerHTML = `
+        <b>Fuente:</b> AEMET ·
+        <b>Capa:</b> ${dayLabel(layer.day)} ·
+        <b>Archivo:</b> ${layer.source_file || ""}<br>
+        Producto automático de peligro de incendios forestales basado en datos meteorológicos.
+      `;
+    }
+
+    function buildButtons(layers) {
+      const container = document.getElementById("layerButtons");
+      container.innerHTML = "";
+
+      layers.forEach(layer => {
+        const btn = document.createElement("button");
+        btn.id = "btn-" + layer.day;
+        btn.textContent = dayLabel(layer.day);
+        btn.onclick = function() {
+          drawLayer(layer);
+        };
+
+        container.appendChild(btn);
+      });
+    }
+
+    fetch("layers.json?v=" + new Date().getTime())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("No se pudo cargar layers.json");
+        }
+        return response.json();
+      })
+      .then(data => {
+        layersInfo = data;
+
+        if (!data.layers || data.layers.length === 0) {
+          throw new Error("layers.json no contiene capas");
+        }
+
+        buildButtons(data.layers);
+
+        const firstLayer = data.layers[0];
+        drawLayer(firstLayer);
+
+        const updated = data.updated_utc || "";
+
+        document.getElementById("metadata").innerHTML += `
+          <br><b>Actualizado:</b> ${updated}
+        `;
+      })
+      .catch(error => {
+        document.getElementById("layerButtons").innerHTML =
+          "No se han podido cargar las capas.";
+        document.getElementById("metadata").innerHTML =
+          "Error al cargar el producto de peligro de incendios AEMET.";
+        console.error(error);
+      });
+  </script>
 
 </body>
 </html>
