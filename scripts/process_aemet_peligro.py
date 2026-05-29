@@ -242,6 +242,30 @@ def make_rgba_from_data(data_masked):
 
 def get_bounds_wgs84(transform, width, height, src_crs):
     """
+    Devuelve bounds en EPSG:4326 para que Leaflet coloque bien el PNG.
+    rasterio.array_bounds devuelve: west, south, east, north.
+    """
+
+    west, south, east, north = array_bounds(height, width, transform)
+
+    if src_crs is not None and str(src_crs).upper() not in ["EPSG:4326", "OGC:CRS84"]:
+        west, south, east, north = transform_bounds(
+            src_crs,
+            "EPSG:4326",
+            west,
+            south,
+            east,
+            north,
+            densify_pts=21
+        )
+
+    return {
+        "west": float(west),
+        "south": float(south),
+        "east": float(east),
+        "north": float(north),
+    }
+    """
     Devuelve bounds en EPSG:4326 para que Leaflet los coloque bien.
     """
 
