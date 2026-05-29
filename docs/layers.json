@@ -1,0 +1,279 @@
+{
+  "product": "Peligro de incendios forestales AEMET",
+  "source": "AEMET",
+  "updated_utc": "2026-05-29T14:16:10.692252+00:00",
+  "layers": [
+    {
+      "day": "D00",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D00.tif",
+      "png": "peligro_D00.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D00",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D00.tif",
+      "png": "peligro_D00.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D01",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D01.tif",
+      "png": "peligro_D01.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D01",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D01.tif",
+      "png": "peligro_D01.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D02",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D02.tif",
+      "png": "peligro_D02.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D02",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D02.tif",
+      "png": "peligro_D02.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D03",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D03.tif",
+      "png": "peligro_D03.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D03",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D03.tif",
+      "png": "peligro_D03.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D04",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D04.tif",
+      "png": "peligro_D04.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D04",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D04.tif",
+      "png": "peligro_D04.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D05",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D05.tif",
+      "png": "peligro_D05.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D05",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D05.tif",
+      "png": "peligro_D05.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D06",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D06.tif",
+      "png": "peligro_D06.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D06",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D06.tif",
+      "png": "peligro_D06.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    },
+    {
+      "day": "D07",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_c_D07.tif",
+      "png": "peligro_D07.png",
+      "bounds": {
+        "west": -18.205,
+        "south": 27.494999999999997,
+        "east": -13.394999999999246,
+        "north": 29.515000000000313
+      },
+      "crs": "EPSG:4326",
+      "width": 481,
+      "height": 202
+    },
+    {
+      "day": "D07",
+      "date": "20260528",
+      "source_file": "down_20260528_peligro_p_D07.tif",
+      "png": "peligro_D07.png",
+      "bounds": {
+        "west": -10.204999999999998,
+        "south": 34.995000000000005,
+        "east": 5.204999999999673,
+        "north": 44.21499999999817
+      },
+      "crs": "EPSG:4326",
+      "width": 1541,
+      "height": 922
+    }
+  ],
+  "legend": [
+    {
+      "value": 1,
+      "label": "Muy bajo",
+      "color": "#4B96E3"
+    },
+    {
+      "value": 2,
+      "label": "Bajo",
+      "color": "#51D1F6"
+    },
+    {
+      "value": 3,
+      "label": "Moderado",
+      "color": "#57E520"
+    },
+    {
+      "value": 4,
+      "label": "Alto",
+      "color": "#F9FB2F"
+    },
+    {
+      "value": 5,
+      "label": "Muy alto",
+      "color": "#EF8504"
+    },
+    {
+      "value": 6,
+      "label": "Extremo",
+      "color": "#F52300"
+    }
+  ]
+}
