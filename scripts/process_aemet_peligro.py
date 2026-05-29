@@ -8,7 +8,9 @@ import tempfile
 import requests
 import numpy as np
 import rasterio
-from rasterio.features import geometry_mask
+from rasterio.mask import mask as raster_mask
+from rasterio.transform import array_bounds
+from rasterio.warp import transform_geom, transform_bounds
 from PIL import Image
 
 
@@ -84,6 +86,18 @@ def safe_extract_tar(tar: tarfile.TarFile, path: Path):
     tar.extractall(path)
 
 
+def safe_extract_zip(z: zipfile.ZipFile, path: Path):
+    base_path = path.resolve()
+
+    for member in z.infolist():
+        member_path = (path / member.filename).resolve()
+
+        if not str(member_path).startswith(str(base_path)):
+            raise RuntimeError(f"Ruta insegura dentro del ZIP: {member.filename}")
+
+    z.extractall(path)
+
+
 def extract_download(download_path: Path, extract_dir: Path):
     print("Comprobando tipo de archivo descargado...")
 
@@ -96,7 +110,7 @@ def extract_download(download_path: Path, extract_dir: Path):
     if zipfile.is_zipfile(download_path):
         print("Detectado ZIP. Extrayendo...")
         with zipfile.ZipFile(download_path, "r") as z:
-            z.extractall(extract_dir)
+            safe_extract_zip(z, extract_dir)
         return
 
     if is_tiff_file(download_path):
@@ -148,62 +162,174 @@ def load_cv_geometries():
     data = json.loads(CV_GEOJSON.read_text(encoding="utf-8"))
 
     if data["type"] == "FeatureCollection":
-        return [feature["geometry"] for feature in data["features"]]
+        geometries = [feature["geometry"] for feature in data["features"]]
 
-    if data["type"] == "Feature":
-        return [data["geometry"]]
+    elif data["type"] == "Feature":
+        geometries = [data["geometry"]]
 
-    if data["type"] in ["Polygon", "MultiPolygon"]:
-        return [data]
+    elif data["type"] in ["Polygon", "MultiPolygon"]:
+        geometries = [data]
 
-    raise ValueError("cv.geojson no tiene una geometría válida.")
+    else:
+        raise ValueError("cv.geojson no tiene una geometría válida.")
+
+    if not geometries:
+        raise ValueError("cv.geojson no contiene geometrías.")
+
+    return geometries
+
+
+def geometries_to_raster_crs(geometries, dst_crs):
+    """
+    El cv.geojson normalmente estará en EPSG:4326.
+    Si el GeoTIFF de AEMET viene en otro CRS, transformamos el polígono
+    antes de recortar.
+    """
+
+    if dst_crs is None:
+        print("Aviso: el GeoTIFF no tiene CRS. Se usará cv.geojson sin reproyectar.")
+        return geometries
+
+    dst_crs_str = str(dst_crs)
+
+    if dst_crs_str.upper() in ["EPSG:4326", "OGC:CRS84"]:
+        return geometries
+
+    print(f"Reproyectando cv.geojson desde EPSG:4326 a {dst_crs_str}")
+
+    transformed = [
+        transform_geom(
+            "EPSG:4326",
+            dst_crs,
+            geom,
+            precision=6
+        )
+        for geom in geometries
+    ]
+
+    return transformed
+
+
+def make_rgba_from_data(data_masked):
+    """
+    Convierte el raster recortado en imagen RGBA.
+    Todo lo que esté fuera del polígono o sea NoData queda transparente.
+    """
+
+    data = np.asarray(data_masked)
+    invalid_mask = np.ma.getmaskarray(data_masked)
+
+    rgba = np.zeros((data.shape[0], data.shape[1], 4), dtype=np.uint8)
+
+    # Algunos TIFF pueden venir como float. Redondeamos para comparar con 1-6.
+    if np.issubdtype(data.dtype, np.floating):
+        data_values = np.rint(data).astype(np.int16)
+    else:
+        data_values = data.astype(np.int16)
+
+    valid_values = list(COLORS.keys())
+    valid_mask = np.isin(data_values, valid_values) & (~invalid_mask)
+
+    for value, color in COLORS.items():
+        value_mask = (data_values == value) & valid_mask
+        rgba[value_mask] = color
+
+    # Reforzamos transparencia absoluta fuera de valores válidos.
+    rgba[~valid_mask] = (0, 0, 0, 0)
+
+    return rgba
+
+
+def get_bounds_wgs84(transform, width, height, src_crs):
+    """
+    Devuelve bounds en EPSG:4326 para que Leaflet los coloque bien.
+    """
+
+    south, west, north, east = array_bounds(height, width, transform)
+
+    # array_bounds devuelve: south, west, north, east
+    # Lo reorganizamos como left, bottom, right, top.
+    left = west
+    bottom = south
+    right = east
+    top = north
+
+    if src_crs is not None and str(src_crs).upper() not in ["EPSG:4326", "OGC:CRS84"]:
+        left, bottom, right, top = transform_bounds(
+            src_crs,
+            "EPSG:4326",
+            left,
+            bottom,
+            right,
+            top,
+            densify_pts=21
+        )
+
+    return {
+        "west": float(left),
+        "south": float(bottom),
+        "east": float(right),
+        "north": float(top),
+    }
 
 
 def raster_to_png(tif_path: Path, png_path: Path, cv_geometries):
     with rasterio.open(tif_path) as src:
-        data = src.read(1)
-        bounds = src.bounds
-        crs = str(src.crs) if src.crs else None
-        nodata = src.nodata
+        print("CRS raster:", src.crs)
+        print("Bounds raster original:", src.bounds)
+        print("Tamaño raster original:", src.width, "x", src.height)
+        print("NoData:", src.nodata)
 
-        rgba = np.zeros((data.shape[0], data.shape[1], 4), dtype=np.uint8)
+        cv_geometries_raster = geometries_to_raster_crs(cv_geometries, src.crs)
 
-        for value, color in COLORS.items():
-            mask = data == value
-            rgba[mask] = color
+        try:
+            cropped_data, cropped_transform = raster_mask(
+                src,
+                cv_geometries_raster,
+                crop=True,
+                filled=False,
+                indexes=1
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "No hay solape entre el GeoTIFF de AEMET y docs/cv.geojson. "
+                "Revisa que cv.geojson esté en EPSG:4326 y que represente la Comunitat Valenciana."
+            ) from exc
 
-        if nodata is not None:
-            rgba[data == nodata] = (0, 0, 0, 0)
+        if cropped_data.ndim == 3:
+            cropped_data = cropped_data[0]
 
-        valid_values = set(COLORS.keys())
-        valid_mask = np.isin(data, list(valid_values))
-        rgba[~valid_mask] = (0, 0, 0, 0)
+        height, width = cropped_data.shape
 
-        # Máscara real a la Comunitat Valenciana.
-        # Lo de fuera queda transparente.
-        inside_cv = geometry_mask(
-            cv_geometries,
-            out_shape=data.shape,
-            transform=src.transform,
-            invert=True
-        )
+        print("Tamaño raster recortado:", width, "x", height)
 
-        rgba[~inside_cv] = (0, 0, 0, 0)
+        rgba = make_rgba_from_data(cropped_data)
+
+        # Seguridad extra: si algún píxel no tiene clase 1-6, queda transparente.
+        alpha_pixels = int(np.count_nonzero(rgba[:, :, 3]))
+        print("Píxeles visibles en PNG:", alpha_pixels)
+
+        if alpha_pixels == 0:
+            print("Aviso: el PNG no tiene píxeles visibles. Puede que el TIFF no tenga valores 1-6 dentro de la CV.")
 
         img = Image.fromarray(rgba, mode="RGBA")
-        img.save(png_path)
+        img.save(png_path, optimize=True)
+
+        bounds = get_bounds_wgs84(
+            cropped_transform,
+            width,
+            height,
+            src.crs
+        )
+
+        print("Bounds PNG en EPSG:4326:", bounds)
 
         return {
-            "bounds": {
-                "west": float(bounds.left),
-                "south": float(bounds.bottom),
-                "east": float(bounds.right),
-                "north": float(bounds.top),
-            },
-            "crs": crs,
-            "width": int(src.width),
-            "height": int(src.height),
-            "nodata": None if nodata is None else float(nodata),
+            "bounds": bounds,
+            "crs": str(src.crs) if src.crs else None,
+            "width": int(width),
+            "height": int(height),
+            "nodata": None if src.nodata is None else float(src.nodata),
         }
 
 
@@ -296,7 +422,11 @@ def main():
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "num_layers": len(layers),
                 "layers": [layer["day"] for layer in layers],
-                "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). El PNG se recorta a la Comunitat Valenciana mediante cv.geojson.",
+                "note": (
+                    "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). "
+                    "Cada PNG se recorta a la Comunitat Valenciana mediante docs/cv.geojson. "
+                    "El exterior del polígono queda transparente para evitar rectángulos blancos en el visor."
+                ),
             }, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
