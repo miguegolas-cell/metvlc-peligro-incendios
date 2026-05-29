@@ -1,0 +1,43 @@
+name: Actualizar peligro incendios AEMET
+
+on:
+  schedule:
+    # Una vez al día por la mañana
+    - cron: "30 8 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  actualizar-peligro:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Procesar peligro de incendios AEMET
+        run: python scripts/process_aemet_peligro.py
+
+      - name: Guardar resultados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/*.png docs/*.json data/aemet_incendios_download.zip
+          git commit -m "Actualiza peligro incendios AEMET" || echo "Sin cambios que guardar"
+          git push
