@@ -1,23 +1,8 @@
 {
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
-  "updated_utc": "2026-05-29T14:16:10.692252+00:00",
+  "updated_utc": "2026-05-29T14:25:52.681619+00:00",
   "layers": [
-    {
-      "day": "D00",
-      "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D00.tif",
-      "png": "peligro_D00.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
-    },
     {
       "day": "D00",
       "date": "20260528",
@@ -32,21 +17,6 @@
       "crs": "EPSG:4326",
       "width": 1541,
       "height": 922
-    },
-    {
-      "day": "D01",
-      "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D01.tif",
-      "png": "peligro_D01.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
     },
     {
       "day": "D01",
@@ -66,21 +36,6 @@
     {
       "day": "D02",
       "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D02.tif",
-      "png": "peligro_D02.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
-    },
-    {
-      "day": "D02",
-      "date": "20260528",
       "source_file": "down_20260528_peligro_p_D02.tif",
       "png": "peligro_D02.png",
       "bounds": {
@@ -92,21 +47,6 @@
       "crs": "EPSG:4326",
       "width": 1541,
       "height": 922
-    },
-    {
-      "day": "D03",
-      "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D03.tif",
-      "png": "peligro_D03.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
     },
     {
       "day": "D03",
@@ -126,21 +66,6 @@
     {
       "day": "D04",
       "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D04.tif",
-      "png": "peligro_D04.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
-    },
-    {
-      "day": "D04",
-      "date": "20260528",
       "source_file": "down_20260528_peligro_p_D04.tif",
       "png": "peligro_D04.png",
       "bounds": {
@@ -152,21 +77,6 @@
       "crs": "EPSG:4326",
       "width": 1541,
       "height": 922
-    },
-    {
-      "day": "D05",
-      "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D05.tif",
-      "png": "peligro_D05.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
     },
     {
       "day": "D05",
@@ -186,21 +96,6 @@
     {
       "day": "D06",
       "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D06.tif",
-      "png": "peligro_D06.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
-    },
-    {
-      "day": "D06",
-      "date": "20260528",
       "source_file": "down_20260528_peligro_p_D06.tif",
       "png": "peligro_D06.png",
       "bounds": {
@@ -212,21 +107,6 @@
       "crs": "EPSG:4326",
       "width": 1541,
       "height": 922
-    },
-    {
-      "day": "D07",
-      "date": "20260528",
-      "source_file": "down_20260528_peligro_c_D07.tif",
-      "png": "peligro_D07.png",
-      "bounds": {
-        "west": -18.205,
-        "south": 27.494999999999997,
-        "east": -13.394999999999246,
-        "north": 29.515000000000313
-      },
-      "crs": "EPSG:4326",
-      "width": 481,
-      "height": 202
     },
     {
       "day": "D07",

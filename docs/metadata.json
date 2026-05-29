@@ -2,24 +2,17 @@
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
   "download_url": "https://www.aemet.es/es/api-eltiempo/incendios/download",
-  "generated_utc": "2026-05-29T14:16:10.692691+00:00",
-  "num_layers": 16,
+  "generated_utc": "2026-05-29T14:25:52.682053+00:00",
+  "num_layers": 8,
   "layers": [
     "D00",
-    "D00",
-    "D01",
     "D01",
     "D02",
-    "D02",
-    "D03",
     "D03",
     "D04",
-    "D04",
-    "D05",
     "D05",
     "D06",
-    "D06",
-    "D07",
     "D07"
-  ]
+  ],
+  "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_)."
 }
