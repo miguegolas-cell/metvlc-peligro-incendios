@@ -8,6 +8,7 @@ import tempfile
 import requests
 import numpy as np
 import rasterio
+from rasterio.features import geometry_mask
 from PIL import Image
 
 
@@ -19,18 +20,18 @@ DATA_DIR = Path("data")
 DOCS_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 
+CV_GEOJSON = DOCS_DIR / "cv.geojson"
 LAYERS_JSON = DOCS_DIR / "layers.json"
 METADATA_JSON = DOCS_DIR / "metadata.json"
 
 
-# Paleta oficial detectada en los estilos SLD/QML de AEMET
 COLORS = {
-    1: (75, 150, 227, 210),   # Muy bajo
-    2: (81, 209, 246, 210),   # Bajo
-    3: (87, 229, 32, 210),    # Moderado
-    4: (249, 251, 47, 210),   # Alto
-    5: (239, 133, 4, 210),    # Muy alto
-    6: (245, 35, 0, 210),     # Extremo
+    1: (75, 150, 227, 220),   # Muy bajo
+    2: (81, 209, 246, 220),   # Bajo
+    3: (87, 229, 32, 220),    # Moderado
+    4: (249, 251, 47, 220),   # Alto
+    5: (239, 133, 4, 220),    # Muy alto
+    6: (245, 35, 0, 220),     # Extremo
 }
 
 LABELS = {
@@ -44,11 +45,6 @@ LABELS = {
 
 
 def is_tiff_file(path: Path) -> bool:
-    """
-    Detecta TIFF/GeoTIFF por cabecera binaria.
-    TIFF little endian: II*
-    TIFF big endian: MM*
-    """
     if not path.exists() or path.stat().st_size < 4:
         return False
 
@@ -77,9 +73,6 @@ def download_file(url: str, out_path: Path) -> Path:
 
 
 def safe_extract_tar(tar: tarfile.TarFile, path: Path):
-    """
-    Extrae TAR de forma segura evitando rutas peligrosas.
-    """
     base_path = path.resolve()
 
     for member in tar.getmembers():
@@ -92,14 +85,6 @@ def safe_extract_tar(tar: tarfile.TarFile, path: Path):
 
 
 def extract_download(download_path: Path, extract_dir: Path):
-    """
-    AEMET puede devolver:
-    - TAR.GZ
-    - ZIP
-    - TIF directo
-    - HTML/JSON de error
-    """
-
     print("Comprobando tipo de archivo descargado...")
 
     if tarfile.is_tarfile(download_path):
@@ -120,17 +105,8 @@ def extract_download(download_path: Path, extract_dir: Path):
         target.write_bytes(download_path.read_bytes())
         return
 
-    sample = download_path.read_bytes()[:800]
-
-    try:
-        print("Primeros caracteres de la descarga:")
-        print(sample.decode("utf-8", errors="replace"))
-    except Exception:
-        print(sample)
-
     raise RuntimeError(
-        "La descarga no es TAR.GZ, ZIP ni GeoTIFF. "
-        "Probablemente AEMET ha devuelto HTML/JSON o una respuesta no esperada."
+        "La descarga no es TAR.GZ, ZIP ni GeoTIFF."
     )
 
 
@@ -146,9 +122,6 @@ def find_tifs(folder: Path):
 
 
 def get_day_code(path: Path) -> str:
-    """
-    Extrae D00, D01, D02... del nombre del archivo.
-    """
     match = re.search(r"_D(\d{2})", path.name, re.IGNORECASE)
 
     if match:
@@ -158,9 +131,6 @@ def get_day_code(path: Path) -> str:
 
 
 def get_date_from_name(path: Path) -> str:
-    """
-    Extrae fecha tipo 20260528 del nombre.
-    """
     match = re.search(r"(\d{8})", path.name)
 
     if match:
@@ -169,7 +139,27 @@ def get_date_from_name(path: Path) -> str:
     return ""
 
 
-def raster_to_png(tif_path: Path, png_path: Path):
+def load_cv_geometries():
+    if not CV_GEOJSON.exists():
+        raise FileNotFoundError(
+            "No existe docs/cv.geojson. Súbelo al repositorio para recortar a la Comunitat Valenciana."
+        )
+
+    data = json.loads(CV_GEOJSON.read_text(encoding="utf-8"))
+
+    if data["type"] == "FeatureCollection":
+        return [feature["geometry"] for feature in data["features"]]
+
+    if data["type"] == "Feature":
+        return [data["geometry"]]
+
+    if data["type"] in ["Polygon", "MultiPolygon"]:
+        return [data]
+
+    raise ValueError("cv.geojson no tiene una geometría válida.")
+
+
+def raster_to_png(tif_path: Path, png_path: Path, cv_geometries):
     with rasterio.open(tif_path) as src:
         data = src.read(1)
         bounds = src.bounds
@@ -182,14 +172,23 @@ def raster_to_png(tif_path: Path, png_path: Path):
             mask = data == value
             rgba[mask] = color
 
-        # Transparencia para nodata
         if nodata is not None:
             rgba[data == nodata] = (0, 0, 0, 0)
 
-        # Transparencia para valores no clasificados
         valid_values = set(COLORS.keys())
         valid_mask = np.isin(data, list(valid_values))
         rgba[~valid_mask] = (0, 0, 0, 0)
+
+        # Máscara real a la Comunitat Valenciana.
+        # Lo de fuera queda transparente.
+        inside_cv = geometry_mask(
+            cv_geometries,
+            out_shape=data.shape,
+            transform=src.transform,
+            invert=True
+        )
+
+        rgba[~inside_cv] = (0, 0, 0, 0)
 
         img = Image.fromarray(rgba, mode="RGBA")
         img.save(png_path)
@@ -209,6 +208,8 @@ def raster_to_png(tif_path: Path, png_path: Path):
 
 
 def main():
+    cv_geometries = load_cv_geometries()
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
 
@@ -225,8 +226,7 @@ def main():
 
         tifs = find_tifs(extract_dir)
 
-        # Nos quedamos solo con los archivos de Península y Baleares.
-        # AEMET usa "_p_" para Península/Baleares y "_c_" para Canarias.
+        # Ignoramos Canarias y usamos solo Península/Baleares.
         tifs = [
             tif for tif in tifs
             if "_p_" in tif.name.lower()
@@ -241,7 +241,6 @@ def main():
         for tif in tifs:
             print(" -", tif.name)
 
-        # Limpieza de capas antiguas para evitar restos de ejecuciones anteriores
         for old_png in DOCS_DIR.glob("peligro_D*.png"):
             print("Eliminando capa antigua:", old_png.name)
             old_png.unlink()
@@ -256,7 +255,7 @@ def main():
             png_path = DOCS_DIR / png_name
 
             print(f"Procesando {tif.name} → {png_name}")
-            raster_info = raster_to_png(tif, png_path)
+            raster_info = raster_to_png(tif, png_path, cv_geometries)
 
             layers.append({
                 "day": day_code,
@@ -297,7 +296,7 @@ def main():
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "num_layers": len(layers),
                 "layers": [layer["day"] for layer in layers],
-                "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_).",
+                "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). El PNG se recorta a la Comunitat Valenciana mediante cv.geojson.",
             }, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
