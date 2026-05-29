@@ -128,7 +128,7 @@
 
     <div class="header">
       <h1>Peligro de incendios forestales</h1>
-      <p>Producto georreferenciado oficial · Fuente: AEMET · Recorte Comunidad Valenciana</p>
+      <p>Producto georreferenciado oficial · Fuente: AEMET · Recorte Comunitat Valenciana</p>
     </div>
 
     <div class="controls" id="layerButtons">
@@ -166,7 +166,6 @@
     let currentOverlay = null;
     let cvGeoJson = null;
     let cvBoundaryLayer = null;
-    let cvMaskLayer = null;
     let cvBounds = null;
     let updatedUTC = "";
 
@@ -175,45 +174,50 @@
       zoomControl: true
     }).setView([39.5, -0.5], 8);
 
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap"
-});
+    const osm = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }
+    );
 
-const esriTopo = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-  {
-    maxZoom: 18,
-    attribution: "Tiles &copy; Esri"
-  }
-);
+    const esriTopo = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 18,
+        attribution: "Tiles &copy; Esri"
+      }
+    );
 
-const openTopo = L.tileLayer(
-  "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-  {
-    maxZoom: 17,
-    attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap"
-  }
-);
+    const openTopo = L.tileLayer(
+      "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 17,
+        attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap"
+      }
+    );
 
-/* Fondo por defecto */
-esriTopo.addTo(map);
+    esriTopo.addTo(map);
 
-/* Control para cambiar de mapa base */
-const baseMaps = {
-  "Relieve · Esri": esriTopo,
-  "Topográfico · OpenTopo": openTopo,
-  "Calles · OSM": osm
-};
+    const baseMaps = {
+      "Relieve · Esri": esriTopo,
+      "Topográfico · OpenTopo": openTopo,
+      "Calles · OSM": osm
+    };
 
-L.control.layers(baseMaps, null, {
-  collapsed: false
-}).addTo(map);
+    L.control.layers(baseMaps, null, {
+      collapsed: false
+    }).addTo(map);
+
+    /*
+      IMPORTANTE:
+      Se elimina la máscara blanca cvMaskLayer.
+      El PNG ya debe venir recortado y con transparencia desde process_aemet_peligro.py.
+    */
+
     map.createPane("rasterPane");
     map.getPane("rasterPane").style.zIndex = 320;
-
-    map.createPane("maskPane");
-    map.getPane("maskPane").style.zIndex = 340;
 
     map.createPane("boundaryPane");
     map.getPane("boundaryPane").style.zIndex = 360;
@@ -248,34 +252,6 @@ L.control.layers(baseMaps, null, {
       });
     }
 
-    function ringToLatLngs(ring) {
-      return ring.map(coord => [coord[1], coord[0]]);
-    }
-
-    function getMainOuterRing(feature) {
-      const geom = feature.geometry;
-
-      if (geom.type === "Polygon") {
-        return geom.coordinates[0];
-      }
-
-      if (geom.type === "MultiPolygon") {
-        let best = null;
-        let bestLen = 0;
-
-        geom.coordinates.forEach(poly => {
-          if (poly[0] && poly[0].length > bestLen) {
-            best = poly[0];
-            bestLen = poly[0].length;
-          }
-        });
-
-        return best;
-      }
-
-      return null;
-    }
-
     function drawCVBoundary(geojson) {
       if (cvBoundaryLayer) {
         map.removeLayer(cvBoundaryLayer);
@@ -294,37 +270,6 @@ L.control.layers(baseMaps, null, {
       cvBounds = cvBoundaryLayer.getBounds();
     }
 
-    function drawCVMask(geojson) {
-      if (cvMaskLayer) {
-        map.removeLayer(cvMaskLayer);
-      }
-
-      const feature = geojson.features[0];
-      const outerRing = getMainOuterRing(feature);
-
-      if (!outerRing) return;
-
-      const outerWorld = [
-        [90, -180],
-        [90, 180],
-        [-90, 180],
-        [-90, -180]
-      ];
-
-      const hole = ringToLatLngs(outerRing);
-
-      cvMaskLayer = L.polygon(
-        [outerWorld, hole],
-        {
-          pane: "maskPane",
-          stroke: false,
-          fillColor: "#f9f9fe",
-          fillOpacity: 0.92,
-          interactive: false
-        }
-      ).addTo(map);
-    }
-
     function drawLayer(layer) {
       if (!layer) return;
 
@@ -339,11 +284,11 @@ L.control.layers(baseMaps, null, {
         [b.north, b.east]
       ];
 
-     currentOverlay = L.imageOverlay(layer.png, bounds, {
-  pane: "rasterPane",
-  opacity: 0.68,
-  interactive: false
-}).addTo(map);
+      currentOverlay = L.imageOverlay(layer.png, bounds, {
+        pane: "rasterPane",
+        opacity: 0.90,
+        interactive: false
+      }).addTo(map);
 
       setActiveButton(layer.day);
 
@@ -362,7 +307,7 @@ L.control.layers(baseMaps, null, {
         <b>Capa:</b> ${dayLabel(layer.day)} ·
         <b>Archivo:</b> ${layer.source_file || ""}<br>
         Producto automático de peligro de incendios forestales basado en datos meteorológicos.
-        Recorte visual centrado en la Comunitat Valenciana.
+        Recorte real a la Comunitat Valenciana.
         <br><b>Actualizado:</b> ${updatedUTC || "—"}
       `;
     }
@@ -387,8 +332,6 @@ L.control.layers(baseMaps, null, {
       }
 
       drawCVBoundary(cvGeoJson);
-      drawCVMask(cvGeoJson);
-
       buildButtons(layersData.layers);
 
       const firstLayer = layersData.layers[0];
