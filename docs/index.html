@@ -198,6 +198,7 @@
       }
     );
 
+    // Fondo por defecto
     esriTopo.addTo(map);
 
     const baseMaps = {
@@ -210,22 +211,45 @@
       collapsed: false
     }).addTo(map);
 
-    /*
-      IMPORTANTE:
-      Se elimina la máscara blanca cvMaskLayer.
-      El PNG ya debe venir recortado y con transparencia desde process_aemet_peligro.py.
-    */
-
+    // Paneles de Leaflet
     map.createPane("rasterPane");
     map.getPane("rasterPane").style.zIndex = 320;
 
     map.createPane("boundaryPane");
     map.getPane("boundaryPane").style.zIndex = 360;
 
-    function dayLabel(day) {
-      if (day === "D00") return "Hoy";
-      if (day === "D01") return "Mañana";
-      return day.replace("D", "D+");
+    function formatPeninsularTime(isoString) {
+      if (!isoString) return "—";
+
+      const date = new Date(isoString);
+
+      if (isNaN(date.getTime())) {
+        return isoString;
+      }
+
+      return new Intl.DateTimeFormat("es-ES", {
+        timeZone: "Europe/Madrid",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short"
+      }).format(date);
+    }
+
+    function formatLayerDate(layer) {
+      if (!layer || !layer.date) {
+        return layer && layer.day ? layer.day : "—";
+      }
+
+      // layer.date viene como YYYYMMDD
+      const year = layer.date.substring(0, 4);
+      const month = layer.date.substring(4, 6);
+      const day = layer.date.substring(6, 8);
+
+      return `${day}/${month}/${year}`;
     }
 
     function setActiveButton(day) {
@@ -244,7 +268,7 @@
       layers.forEach(layer => {
         const btn = document.createElement("button");
         btn.id = "btn-" + layer.day;
-        btn.textContent = dayLabel(layer.day);
+        btn.textContent = formatLayerDate(layer);
         btn.onclick = function() {
           drawLayer(layer);
         };
@@ -284,7 +308,14 @@
         [b.north, b.east]
       ];
 
-      currentOverlay = L.imageOverlay(layer.png, bounds, {
+      /*
+        Anticaché para los PNG.
+        Así el navegador carga la imagen nueva cuando se actualiza layers.json.
+      */
+      const cacheKey = updatedUTC || new Date().getTime();
+      const pngUrl = layer.png + "?v=" + encodeURIComponent(cacheKey);
+
+      currentOverlay = L.imageOverlay(pngUrl, bounds, {
         pane: "rasterPane",
         opacity: 0.90,
         interactive: false
@@ -304,11 +335,11 @@
 
       document.getElementById("metadata").innerHTML = `
         <b>Fuente:</b> AEMET ·
-        <b>Capa:</b> ${dayLabel(layer.day)} ·
+        <b>Fecha:</b> ${formatLayerDate(layer)} ·
         <b>Archivo:</b> ${layer.source_file || ""}<br>
         Producto automático de peligro de incendios forestales basado en datos meteorológicos.
         Recorte real a la Comunitat Valenciana.
-        <br><b>Actualizado:</b> ${updatedUTC || "—"}
+        <br><b>Actualizado:</b> ${formatPeninsularTime(updatedUTC)} hora peninsular
       `;
     }
 
