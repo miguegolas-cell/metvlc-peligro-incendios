@@ -3,7 +3,7 @@ name: Actualizar peligro incendios AEMET
 on:
   schedule:
     # Una vez al día por la mañana
-    - cron: "30 8 * * *"
+    - cron: "0 10 * * *"
 
   workflow_dispatch:
 
