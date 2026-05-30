@@ -1,7 +1,7 @@
 {
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
-  "updated_utc": "2026-05-30T19:08:11.664783+00:00",
+  "updated_utc": "2026-05-30T19:19:14.080859+00:00",
   "base_date_aemet": "20260530",
   "base_date_note": "D00 se calcula a partir de la fecha incluida en el nombre de los TIFF de AEMET.",
   "layers": [
