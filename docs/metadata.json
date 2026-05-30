@@ -2,9 +2,8 @@
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
   "download_url": "https://www.aemet.es/es/api-eltiempo/incendios/download",
-  "generated_utc": "2026-05-30T16:44:59.879947+00:00",
-  "timezone": "Europe/Madrid",
-  "base_date_peninsular": "20260530",
+  "generated_utc": "2026-05-30T19:08:11.665184+00:00",
+  "base_date_aemet": "20260530",
   "num_layers": 8,
   "layers": [
     "D00",
@@ -20,43 +19,51 @@
     {
       "day": "D00",
       "date": "20260530",
-      "png": "peligro_D00.png"
+      "png": "peligro_D00.png",
+      "source_file": "down_20260530_peligro_p_D00.tif"
     },
     {
       "day": "D01",
       "date": "20260531",
-      "png": "peligro_D01.png"
+      "png": "peligro_D01.png",
+      "source_file": "down_20260530_peligro_p_D01.tif"
     },
     {
       "day": "D02",
       "date": "20260601",
-      "png": "peligro_D02.png"
+      "png": "peligro_D02.png",
+      "source_file": "down_20260530_peligro_p_D02.tif"
     },
     {
       "day": "D03",
       "date": "20260602",
-      "png": "peligro_D03.png"
+      "png": "peligro_D03.png",
+      "source_file": "down_20260530_peligro_p_D03.tif"
     },
     {
       "day": "D04",
       "date": "20260603",
-      "png": "peligro_D04.png"
+      "png": "peligro_D04.png",
+      "source_file": "down_20260530_peligro_p_D04.tif"
     },
     {
       "day": "D05",
       "date": "20260604",
-      "png": "peligro_D05.png"
+      "png": "peligro_D05.png",
+      "source_file": "down_20260530_peligro_p_D05.tif"
     },
     {
       "day": "D06",
       "date": "20260605",
-      "png": "peligro_D06.png"
+      "png": "peligro_D06.png",
+      "source_file": "down_20260530_peligro_p_D06.tif"
     },
     {
       "day": "D07",
       "date": "20260606",
-      "png": "peligro_D07.png"
+      "png": "peligro_D07.png",
+      "source_file": "down_20260530_peligro_p_D07.tif"
     }
   ],
-  "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). Cada PNG se recorta a la Comunitat Valenciana mediante docs/cv.geojson. El exterior del polígono queda transparente. Las fechas mostradas se calculan como D00, D01, D02... a partir de la fecha peninsular de ejecución."
+  "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). Cada PNG se recorta a la Comunitat Valenciana mediante docs/cv.geojson. El exterior del polígono queda transparente. La fecha de D00 se obtiene de la fecha incluida en el nombre de los TIFF de AEMET. D01, D02, etc. se calculan sumando días a esa fecha base."
 }
