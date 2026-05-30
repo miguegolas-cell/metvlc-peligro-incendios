@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>MetVlc · Peligro de incendios AEMET</title>
 
   <link
@@ -68,7 +67,6 @@
       cursor: pointer;
       box-shadow: 0 3px 10px rgba(0,0,0,0.12);
       transition: 0.2s ease;
-      font-size: 13px;
     }
 
     .controls button:hover {
@@ -112,12 +110,6 @@
       line-height: 1.5;
     }
 
-    .leaflet-control-layers {
-      border-radius: 10px !important;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.18) !important;
-      font-size: 13px;
-    }
-
     @media screen and (max-width: 900px) {
       .header h1 {
         font-size: 21px;
@@ -125,15 +117,6 @@
 
       #map {
         height: 560px;
-      }
-
-      .legend {
-        font-size: 13px;
-      }
-
-      .controls button {
-        font-size: 12px;
-        padding: 8px 11px;
       }
     }
   </style>
@@ -181,6 +164,7 @@
   <script>
     let layersInfo = null;
     let currentOverlay = null;
+    let cvGeoJson = null;
     let cvBoundaryLayer = null;
     let cvBounds = null;
     let updatedUTC = "";
@@ -188,12 +172,15 @@
     const map = L.map("map", {
       preferCanvas: true,
       zoomControl: true
-    }).setView([39.45, -0.45], 8);
+    }).setView([39.5, -0.5], 8);
 
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    });
+    const osm = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }
+    );
 
     const esriTopo = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
@@ -229,38 +216,58 @@
     map.createPane("boundaryPane");
     map.getPane("boundaryPane").style.zIndex = 360;
 
+    function formatPeninsularTime(isoString) {
+      if (!isoString) return "—";
+
+      const date = new Date(isoString);
+
+      if (isNaN(date.getTime())) {
+        return isoString;
+      }
+
+      return new Intl.DateTimeFormat("es-ES", {
+        timeZone: "Europe/Madrid",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short"
+      }).format(date);
+    }
+
     function formatDateFromLayer(layer) {
-  if (!layer || !layer.date) {
-    return "";
-  }
+      if (!layer || !layer.date) {
+        return "";
+      }
 
-  /*
-    layer.date YA viene calculado correctamente desde process_aemet_peligro.py.
+      /*
+        layer.date ya viene calculado correctamente desde process_aemet_peligro.py.
 
-    Ejemplo correcto:
-    D00 -> 20260530
-    D01 -> 20260531
-    D02 -> 20260601
+        Ejemplo:
+        D00 -> 20260530
+        D01 -> 20260531
+        D02 -> 20260601
 
-    Por tanto aquí NO hay que sumar otra vez el offset D00/D01/D02.
-  */
+        Aquí NO se suma otra vez el offset D00/D01/D02.
+      */
 
-  const year = layer.date.slice(0, 4);
-  const month = layer.date.slice(4, 6);
-  const day = layer.date.slice(6, 8);
+      const year = layer.date.slice(0, 4);
+      const month = layer.date.slice(4, 6);
+      const day = layer.date.slice(6, 8);
 
-  return `${day}/${month}/${year}`;
-}
+      return `${day}/${month}/${year}`;
+    }
 
-   function dayLabel(layer) {
-  const fecha = formatDateFromLayer(layer);
+    function dayLabel(layer) {
+      const fecha = formatDateFromLayer(layer);
 
-  if (!fecha) {
-    return layer.day || "";
-  }
+      if (!fecha) {
+        return layer.day || "";
+      }
 
-  return fecha;
-}
+      return fecha;
     }
 
     function setActiveButton(day) {
@@ -269,9 +276,7 @@
       });
 
       const btn = document.getElementById("btn-" + day);
-      if (btn) {
-        btn.classList.add("active");
-      }
+      if (btn) btn.classList.add("active");
     }
 
     function buildButtons(layers) {
@@ -285,7 +290,6 @@
         btn.onclick = function() {
           drawLayer(layer);
         };
-
         container.appendChild(btn);
       });
     }
@@ -299,34 +303,13 @@
         pane: "boundaryPane",
         style: {
           color: "#0b2f4f",
-          weight: 2.4,
+          weight: 2.2,
           fill: false,
           opacity: 1
         }
       }).addTo(map);
 
       cvBounds = cvBoundaryLayer.getBounds();
-
-      map.fitBounds(cvBounds, {
-        padding: [20, 20]
-      });
-
-      map.setMaxBounds(cvBounds.pad(0.35));
-    }
-
-    function formatUTCToMadrid(isoString) {
-      if (!isoString) return "—";
-
-      const fecha = new Date(isoString);
-
-      return fecha.toLocaleString("es-ES", {
-        timeZone: "Europe/Madrid",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
     }
 
     function drawLayer(layer) {
@@ -343,9 +326,12 @@
         [b.north, b.east]
       ];
 
-      currentOverlay = L.imageOverlay(layer.png + "?v=" + new Date().getTime(), bounds, {
+      const cacheKey = updatedUTC || new Date().getTime();
+      const pngUrl = layer.png + "?v=" + encodeURIComponent(cacheKey);
+
+      currentOverlay = L.imageOverlay(pngUrl, bounds, {
         pane: "rasterPane",
-        opacity: 0.70,
+        opacity: 0.90,
         interactive: false
       }).addTo(map);
 
@@ -353,51 +339,52 @@
 
       if (cvBounds) {
         map.fitBounds(cvBounds, {
-          padding: [20, 20]
+          padding: [10, 10]
+        });
+      } else {
+        map.fitBounds(bounds, {
+          padding: [15, 15]
         });
       }
 
-      const fechaProducto = formatDateFromLayer(layer);
-      const actualizado = formatUTCToMadrid(updatedUTC);
-
       document.getElementById("metadata").innerHTML = `
         <b>Fuente:</b> AEMET ·
-        <b>Capa:</b> ${dayLabel(layer)} ·
-        <b>Fecha válida:</b> ${fechaProducto || "—"}<br>
+        <b>Fecha:</b> ${dayLabel(layer)} ·
         <b>Archivo:</b> ${layer.source_file || ""}<br>
-        <b>Actualizado:</b> ${actualizado} hora peninsular<br>
         Producto automático de peligro de incendios forestales basado en datos meteorológicos.
-        Visualización recortada a la Comunitat Valenciana.
+        Recorte real a la Comunitat Valenciana.
+        <br><b>Actualizado:</b> ${formatPeninsularTime(updatedUTC)} hora peninsular
       `;
     }
 
     Promise.all([
-      fetch("layers.json?v=" + new Date().getTime()).then(response => {
-        if (!response.ok) {
-          throw new Error("No se pudo cargar layers.json");
-        }
-        return response.json();
+      fetch("layers.json?v=" + new Date().getTime()).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar layers.json");
+        return r.json();
       }),
-
-      fetch("cv.geojson?v=" + new Date().getTime()).then(response => {
-        if (!response.ok) {
-          throw new Error("No se pudo cargar cv.geojson");
-        }
-        return response.json();
+      fetch("cv.geojson?v=" + new Date().getTime()).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar cv.geojson");
+        return r.json();
       })
     ])
     .then(([layersData, cvData]) => {
       layersInfo = layersData;
+      cvGeoJson = cvData;
       updatedUTC = layersData.updated_utc || "";
 
       if (!layersData.layers || layersData.layers.length === 0) {
         throw new Error("layers.json no contiene capas");
       }
 
-      drawCVBoundary(cvData);
+      drawCVBoundary(cvGeoJson);
       buildButtons(layersData.layers);
 
-      drawLayer(layersData.layers[0]);
+      const firstLayer = layersData.layers[0];
+      drawLayer(firstLayer);
+
+      if (cvBounds) {
+        map.setMaxBounds(cvBounds.pad(0.25));
+      }
     })
     .catch(error => {
       document.getElementById("layerButtons").innerHTML =
