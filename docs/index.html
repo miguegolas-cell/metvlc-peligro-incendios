@@ -230,43 +230,37 @@
     map.getPane("boundaryPane").style.zIndex = 360;
 
     function formatDateFromLayer(layer) {
-      if (!layer.date || !layer.day) {
-        return "";
-      }
+  if (!layer || !layer.date) {
+    return "";
+  }
 
-      /*
-        layer.date viene desde el nombre del archivo AEMET.
-        Ejemplo:
-        down_20260529_peligro_p_D00.tif
+  /*
+    layer.date YA viene calculado correctamente desde process_aemet_peligro.py.
 
-        layer.date = 20260529
-        layer.day = D00, D01, D02...
-      */
+    Ejemplo correcto:
+    D00 -> 20260530
+    D01 -> 20260531
+    D02 -> 20260601
 
-      const year = Number(layer.date.slice(0, 4));
-      const month = Number(layer.date.slice(4, 6)) - 1;
-      const day = Number(layer.date.slice(6, 8));
+    Por tanto aquí NO hay que sumar otra vez el offset D00/D01/D02.
+  */
 
-      const offset = Number(layer.day.replace("D", ""));
+  const year = layer.date.slice(0, 4);
+  const month = layer.date.slice(4, 6);
+  const day = layer.date.slice(6, 8);
 
-      const fecha = new Date(Date.UTC(year, month, day));
-      fecha.setUTCDate(fecha.getUTCDate() + offset);
+  return `${day}/${month}/${year}`;
+}
 
-      return fecha.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      });
-    }
+   function dayLabel(layer) {
+  const fecha = formatDateFromLayer(layer);
 
-    function dayLabel(layer) {
-      const fecha = formatDateFromLayer(layer);
+  if (!fecha) {
+    return layer.day || "";
+  }
 
-      if (!fecha) {
-        return layer.day || "";
-      }
-
-      return `${layer.day} · ${fecha}`;
+  return fecha;
+}
     }
 
     function setActiveButton(day) {
