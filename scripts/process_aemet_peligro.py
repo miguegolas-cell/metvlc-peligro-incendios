@@ -1,5 +1,6 @@
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import json
 import re
 import zipfile
@@ -136,6 +137,10 @@ def find_tifs(folder: Path):
 
 
 def get_day_code(path: Path) -> str:
+    """
+    Extrae D00, D01, D02... del nombre del TIFF.
+    """
+
     match = re.search(r"_D(\d{2})", path.name, re.IGNORECASE)
 
     if match:
@@ -144,13 +149,34 @@ def get_day_code(path: Path) -> str:
     return "D00"
 
 
-def get_date_from_name(path: Path) -> str:
-    match = re.search(r"(\d{8})", path.name)
+def get_day_offset(day_code: str) -> int:
+    """
+    Convierte D00, D01, D02... en 0, 1, 2...
+    """
+
+    match = re.search(r"D(\d{2})", day_code, re.IGNORECASE)
 
     if match:
-        return match.group(1)
+        return int(match.group(1))
 
-    return ""
+    return 0
+
+
+def get_valid_date_from_day(day_code: str, base_date) -> str:
+    """
+    Calcula la fecha válida de la capa.
+
+    D00 = fecha actual en hora peninsular
+    D01 = día siguiente
+    D02 = dos días después
+    etc.
+
+    Devuelve formato YYYYMMDD para layers.json.
+    """
+
+    offset = get_day_offset(day_code)
+    valid_date = base_date + timedelta(days=offset)
+    return valid_date.strftime("%Y%m%d")
 
 
 def load_cv_geometries():
@@ -227,6 +253,21 @@ def make_rgba_from_data(data_masked):
     else:
         data_values = data.astype(np.int16)
 
+    # Log de diagnóstico: valores encontrados dentro del recorte.
+    visible_data = data_values[~invalid_mask]
+
+    if visible_data.size > 0:
+        unique, counts = np.unique(visible_data, return_counts=True)
+
+        print("Valores encontrados dentro de la CV:")
+        for value, count in zip(unique, counts):
+            if int(value) in LABELS:
+                print(f"  {int(value)} - {LABELS[int(value)]}: {int(count)} píxeles")
+            else:
+                print(f"  {int(value)} - valor no clasificado: {int(count)} píxeles")
+    else:
+        print("Aviso: no hay datos visibles dentro del recorte.")
+
     valid_values = list(COLORS.keys())
     valid_mask = np.isin(data_values, valid_values) & (~invalid_mask)
 
@@ -243,7 +284,9 @@ def make_rgba_from_data(data_masked):
 def get_bounds_wgs84(transform, width, height, src_crs):
     """
     Devuelve bounds en EPSG:4326 para que Leaflet coloque bien el PNG.
-    rasterio.array_bounds devuelve: west, south, east, north.
+
+    rasterio.array_bounds devuelve:
+    west, south, east, north
     """
 
     west, south, east, north = array_bounds(height, width, transform)
@@ -264,36 +307,6 @@ def get_bounds_wgs84(transform, width, height, src_crs):
         "south": float(south),
         "east": float(east),
         "north": float(north),
-    }
-    """
-    Devuelve bounds en EPSG:4326 para que Leaflet los coloque bien.
-    """
-
-    south, west, north, east = array_bounds(height, width, transform)
-
-    # array_bounds devuelve: south, west, north, east
-    # Lo reorganizamos como left, bottom, right, top.
-    left = west
-    bottom = south
-    right = east
-    top = north
-
-    if src_crs is not None and str(src_crs).upper() not in ["EPSG:4326", "OGC:CRS84"]:
-        left, bottom, right, top = transform_bounds(
-            src_crs,
-            "EPSG:4326",
-            left,
-            bottom,
-            right,
-            top,
-            densify_pts=21
-        )
-
-    return {
-        "west": float(left),
-        "south": float(bottom),
-        "east": float(right),
-        "north": float(top),
     }
 
 
@@ -329,12 +342,14 @@ def raster_to_png(tif_path: Path, png_path: Path, cv_geometries):
 
         rgba = make_rgba_from_data(cropped_data)
 
-        # Seguridad extra: si algún píxel no tiene clase 1-6, queda transparente.
         alpha_pixels = int(np.count_nonzero(rgba[:, :, 3]))
         print("Píxeles visibles en PNG:", alpha_pixels)
 
         if alpha_pixels == 0:
-            print("Aviso: el PNG no tiene píxeles visibles. Puede que el TIFF no tenga valores 1-6 dentro de la CV.")
+            print(
+                "Aviso: el PNG no tiene píxeles visibles. "
+                "Puede que el TIFF no tenga valores 1-6 dentro de la CV."
+            )
 
         img = Image.fromarray(rgba, mode="RGBA")
         img.save(png_path, optimize=True)
@@ -397,14 +412,20 @@ def main():
 
         layers = []
 
+        # Fecha base para que D00, D01, D02... se conviertan en fechas reales.
+        base_date = datetime.now(ZoneInfo("Europe/Madrid")).date()
+        print("Fecha base peninsular para D00:", base_date)
+
         for tif in tifs:
             day_code = get_day_code(tif)
-            date_code = get_date_from_name(tif)
+            date_code = get_valid_date_from_day(day_code, base_date)
 
             png_name = f"peligro_{day_code}.png"
             png_path = DOCS_DIR / png_name
 
             print(f"Procesando {tif.name} → {png_name}")
+            print(f"Código de día: {day_code} → fecha válida: {date_code}")
+
             raster_info = raster_to_png(tif, png_path, cv_geometries)
 
             layers.append({
@@ -425,6 +446,8 @@ def main():
                 "product": "Peligro de incendios forestales AEMET",
                 "source": "AEMET",
                 "updated_utc": datetime.now(timezone.utc).isoformat(),
+                "timezone": "Europe/Madrid",
+                "base_date_peninsular": base_date.strftime("%Y%m%d"),
                 "layers": layers,
                 "legend": [
                     {"value": 1, "label": "Muy bajo", "color": "#4B96E3"},
@@ -444,12 +467,23 @@ def main():
                 "source": "AEMET",
                 "download_url": URL_AEMET,
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
+                "timezone": "Europe/Madrid",
+                "base_date_peninsular": base_date.strftime("%Y%m%d"),
                 "num_layers": len(layers),
                 "layers": [layer["day"] for layer in layers],
+                "dates": [
+                    {
+                        "day": layer["day"],
+                        "date": layer["date"],
+                        "png": layer["png"]
+                    }
+                    for layer in layers
+                ],
                 "note": (
                     "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). "
                     "Cada PNG se recorta a la Comunitat Valenciana mediante docs/cv.geojson. "
-                    "El exterior del polígono queda transparente para evitar rectángulos blancos en el visor."
+                    "El exterior del polígono queda transparente. "
+                    "Las fechas mostradas se calculan como D00, D01, D02... a partir de la fecha peninsular de ejecución."
                 ),
             }, indent=2, ensure_ascii=False),
             encoding="utf-8"
