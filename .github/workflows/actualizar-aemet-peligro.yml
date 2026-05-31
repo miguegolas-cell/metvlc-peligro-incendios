@@ -2,8 +2,9 @@ name: Actualizar peligro incendios AEMET
 
 on:
   schedule:
-    # Una vez al día por la mañana
-    - cron: "0 10 * * *"
+    # Una vez al día.
+    # 09:00 UTC = 11:00 hora peninsular verano / 10:00 invierno.
+    - cron: "0 9 * * *"
 
   workflow_dispatch:
 
@@ -38,6 +39,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/*.png docs/*.json data/aemet_incendios_download.bin
+          git add -A docs data
           git commit -m "Actualiza peligro incendios AEMET" || echo "Sin cambios que guardar"
           git push
