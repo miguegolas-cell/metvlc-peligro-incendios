@@ -1,14 +1,14 @@
 {
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
-  "updated_utc": "2026-06-14T15:29:03.427469+00:00",
-  "base_date_aemet": "20260613",
+  "updated_utc": "2026-06-15T06:12:59.790744+00:00",
+  "base_date_aemet": "20260614",
   "base_date_note": "D00 se calcula a partir de la fecha incluida en el nombre de los TIFF de AEMET.",
   "layers": [
     {
       "day": "D00",
-      "date": "20260613",
-      "source_file": "down_20260613_peligro_p_D00.tif",
+      "date": "20260614",
+      "source_file": "down_20260614_peligro_p_D00.tif",
       "png": "peligro_D00.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -22,8 +22,8 @@
     },
     {
       "day": "D01",
-      "date": "20260614",
-      "source_file": "down_20260613_peligro_p_D01.tif",
+      "date": "20260615",
+      "source_file": "down_20260614_peligro_p_D01.tif",
       "png": "peligro_D01.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -37,8 +37,8 @@
     },
     {
       "day": "D02",
-      "date": "20260615",
-      "source_file": "down_20260613_peligro_p_D02.tif",
+      "date": "20260616",
+      "source_file": "down_20260614_peligro_p_D02.tif",
       "png": "peligro_D02.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -52,8 +52,8 @@
     },
     {
       "day": "D03",
-      "date": "20260616",
-      "source_file": "down_20260613_peligro_p_D03.tif",
+      "date": "20260617",
+      "source_file": "down_20260614_peligro_p_D03.tif",
       "png": "peligro_D03.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -67,8 +67,8 @@
     },
     {
       "day": "D04",
-      "date": "20260617",
-      "source_file": "down_20260613_peligro_p_D04.tif",
+      "date": "20260618",
+      "source_file": "down_20260614_peligro_p_D04.tif",
       "png": "peligro_D04.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -82,8 +82,8 @@
     },
     {
       "day": "D05",
-      "date": "20260618",
-      "source_file": "down_20260613_peligro_p_D05.tif",
+      "date": "20260619",
+      "source_file": "down_20260614_peligro_p_D05.tif",
       "png": "peligro_D05.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -97,8 +97,8 @@
     },
     {
       "day": "D06",
-      "date": "20260619",
-      "source_file": "down_20260613_peligro_p_D06.tif",
+      "date": "20260620",
+      "source_file": "down_20260614_peligro_p_D06.tif",
       "png": "peligro_D06.png",
       "bounds": {
         "west": -1.535000000000183,
@@ -112,8 +112,8 @@
     },
     {
       "day": "D07",
-      "date": "20260620",
-      "source_file": "down_20260613_peligro_p_D07.tif",
+      "date": "20260621",
+      "source_file": "down_20260614_peligro_p_D07.tif",
       "png": "peligro_D07.png",
       "bounds": {
         "west": -1.535000000000183,
