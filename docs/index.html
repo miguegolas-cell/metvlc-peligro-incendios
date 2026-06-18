@@ -3,96 +3,144 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>MetVlc · Peligro de incendios AEMET</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-
-  <!-- Necesario para intentar descargar la vista actual del mapa -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f9f9fe;
-      color: #263238;
+    * {
+      box-sizing: border-box;
     }
 
-    .page {
-      max-width: 1200px;
-      margin: 25px auto;
-      background: #ffffff;
-      border-radius: 16px;
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #eef2f3;
+      color: #1f2d33;
       overflow: hidden;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.14);
     }
 
-    .header {
-      background: linear-gradient(135deg, #0b2f4f 0%, #0b6fa4 65%, #ff6a2a 100%);
-      color: white;
-      padding: 18px 24px;
+    .visor-full {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #eef2f3;
+    }
+
+    .banner {
+      flex: 0 0 auto;
+      background: linear-gradient(135deg, #263d46, #3f6f7a 62%, #ff6a2a);
+      color: #ffffff;
+      padding: 14px 22px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.26);
       text-align: center;
+      z-index: 1000;
     }
 
-    .header h1 {
+    .banner h1 {
       margin: 0;
-      font-size: 25px;
-      letter-spacing: 0.4px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
     }
 
-    .header p {
-      margin: 6px 0 0;
+    .banner p {
+      margin: 6px auto 0;
+      max-width: 980px;
       font-size: 14px;
-      color: #e8f5ff;
+      line-height: 1.35;
+      color: rgba(255,255,255,0.92);
     }
 
-    .controls {
+    .map-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #dfe7ea;
+    }
+
+    .bottom-panel {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(300px, 480px);
+      gap: 12px;
+      padding: 10px 14px;
+      background: #ffffff;
+      border-top: 1px solid #d9e1e5;
+      box-shadow: 0 -3px 12px rgba(0,0,0,0.12);
+      z-index: 1000;
+    }
+
+    .info-panel,
+    .legend {
+      background: #f7f9fa;
+      border: 1px solid #d9e1e5;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .info-panel h2,
+    .legend h2 {
+      margin: 0 0 7px;
+      font-size: 15px;
+      color: #223942;
+    }
+
+    .info-panel p {
+      margin: 0 0 8px;
+      font-size: 12.5px;
+      line-height: 1.35;
+      color: #4a5a61;
+    }
+
+    .day-controls,
+    .download-controls {
       display: flex;
-      gap: 10px;
-      justify-content: center;
       flex-wrap: wrap;
-      padding: 15px;
-      background: #f6f9fb;
-      border-bottom: 1px solid #dfe8ee;
+      gap: 8px;
+      margin-top: 8px;
     }
 
-    .controls button {
+    .day-controls button,
+    .download-controls button {
+      appearance: none;
       border: 0;
-      padding: 9px 15px;
       border-radius: 10px;
-      background: #0b2f4f;
-      color: white;
+      padding: 9px 12px;
+      background: #263d46;
+      color: #ffffff;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
       transition: 0.2s ease;
     }
 
-    .controls button:hover {
-      background: #14527d;
+    .day-controls button:hover,
+    .download-controls button:hover {
+      background: #3f6f7a;
     }
 
-    .controls button.active {
+    .day-controls button.active {
       background: #ff6a2a;
     }
 
-    .download-controls {
-      background: #ffffff;
-      border-bottom: 1px solid #dfe8ee;
-      padding-top: 10px;
-      padding-bottom: 12px;
-    }
-
     .download-controls button {
-      background: #263d46;
-    }
-
-    .download-controls button:hover {
-      background: #3f6f7a;
+      background: #0b2f4f;
     }
 
     .download-controls button:disabled {
@@ -100,99 +148,173 @@
       cursor: wait;
     }
 
-    #map {
-      width: 100%;
-      height: 720px;
-      background: #dce8ee;
+    .metadata-box {
+      margin-top: 9px;
+      padding: 8px 10px;
+      background: #eef3f5;
+      border-radius: 10px;
+      border: 1px solid #cfdadd;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #4a5a61;
     }
 
-    .legend {
-      padding: 14px 18px;
-      background: #ffffff;
-      border-top: 1px solid #dfe8ee;
-      font-size: 14px;
-      line-height: 1.8;
-      text-align: center;
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 10px;
     }
 
-    .legend span {
-      display: inline-block;
-      width: 18px;
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12.5px;
+      color: #263238;
+      line-height: 1.2;
+    }
+
+    .color-box {
+      width: 28px;
       height: 14px;
-      margin-right: 6px;
-      vertical-align: middle;
-      border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.22);
+      flex: 0 0 auto;
     }
 
-    .meta {
+    .note {
+      font-size: 11px;
+      color: #607078;
+      margin-top: 7px;
+      line-height: 1.25;
+    }
+
+    .leaflet-control-layers {
       font-size: 13px;
-      color: #51636d;
-      padding: 0 18px 18px;
-      background: #ffffff;
-      text-align: center;
-      line-height: 1.5;
     }
 
-    @media screen and (max-width: 900px) {
-      .header h1 {
-        font-size: 21px;
+    @media (max-width: 820px) {
+      html, body {
+        overflow: auto;
       }
 
-      #map {
-        height: 560px;
+      .visor-full {
+        min-height: 100vh;
+        height: auto;
+      }
+
+      .banner {
+        padding: 12px 10px;
+      }
+
+      .banner h1 {
+        font-size: 20px;
+      }
+
+      .banner p {
+        font-size: 12.5px;
+      }
+
+      .map-wrap {
+        height: 68vh;
+        min-height: 520px;
+        flex: none;
+      }
+
+      .bottom-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .legend-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 
 <body>
+  <div class="visor-full">
 
-  <div class="page">
-
-    <div class="header">
+    <section class="banner">
       <h1>Peligro de incendios forestales</h1>
-      <p>Producto georreferenciado oficial · Fuente: AEMET · Comunitat Valenciana</p>
+      <p>
+        Producto georreferenciado oficial · Fuente: AEMET · Comunitat Valenciana
+      </p>
+    </section>
+
+    <div class="map-wrap">
+      <div id="map"></div>
     </div>
 
-    <div class="controls" id="layerButtons">
-      Cargando capas...
-    </div>
+    <section class="bottom-panel">
 
-    <div class="controls download-controls">
-      <button id="downloadCurrentLayerBtn" type="button">
-        Descargar imagen seleccionada
-      </button>
+      <div class="info-panel">
+        <h2>Control de visualización</h2>
+        <p>
+          Selecciona el día del producto, cambia el mapa base y descarga la imagen seleccionada o la vista actual.
+        </p>
 
-      <button id="downloadMapViewBtn" type="button">
-        Descargar vista actual del mapa
-      </button>
-    </div>
+        <div class="day-controls" id="layerButtons">
+          Cargando capas...
+        </div>
 
-    <div id="map"></div>
+        <div class="download-controls">
+          <button id="downloadCurrentLayerBtn" type="button">
+            Descargar imagen seleccionada
+          </button>
 
-    <div class="legend">
-      <b>Leyenda:</b>
-      &nbsp;&nbsp;
-      <span style="background:#4B96E3;"></span> Muy bajo
-      &nbsp;&nbsp;
-      <span style="background:#51D1F6;"></span> Bajo
-      &nbsp;&nbsp;
-      <span style="background:#57E520;"></span> Moderado
-      &nbsp;&nbsp;
-      <span style="background:#F9FB2F;"></span> Alto
-      &nbsp;&nbsp;
-      <span style="background:#EF8504;"></span> Muy alto
-      &nbsp;&nbsp;
-      <span style="background:#F52300;"></span> Extremo
-    </div>
+          <button id="downloadMapViewBtn" type="button">
+            Descargar vista actual
+          </button>
+        </div>
 
-    <div class="meta" id="metadata">
-      Cargando metadatos...
-    </div>
+        <div class="metadata-box" id="metadata">
+          Cargando metadatos...
+        </div>
+      </div>
 
+      <aside class="legend">
+        <h2>Leyenda</h2>
+
+        <div class="legend-grid">
+          <div class="legend-row">
+            <span class="color-box" style="background:#4B96E3;"></span>
+            Muy bajo
+          </div>
+
+          <div class="legend-row">
+            <span class="color-box" style="background:#51D1F6;"></span>
+            Bajo
+          </div>
+
+          <div class="legend-row">
+            <span class="color-box" style="background:#57E520;"></span>
+            Moderado
+          </div>
+
+          <div class="legend-row">
+            <span class="color-box" style="background:#F9FB2F;"></span>
+            Alto
+          </div>
+
+          <div class="legend-row">
+            <span class="color-box" style="background:#EF8504;"></span>
+            Muy alto
+          </div>
+
+          <div class="legend-row">
+            <span class="color-box" style="background:#F52300;"></span>
+            Extremo
+          </div>
+        </div>
+
+        <div class="note">
+          Producto oficial de peligro meteorológico de incendios forestales. La interpretación operativa debe complementarse con viento, humedad relativa, temperatura, DPV, estado del combustible y situación sinóptica.
+        </div>
+      </aside>
+
+    </section>
   </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     let layersInfo = null;
@@ -208,15 +330,7 @@
       zoomControl: true
     }).setView([39.5, -0.5], 8);
 
-    const osm = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
-        maxZoom: 19,
-        crossOrigin: true,
-        attribution: "&copy; OpenStreetMap"
-      }
-    );
-
+    // Fondo principal: topográfico con relieve y topónimos
     const esriTopo = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
       {
@@ -224,8 +338,19 @@
         crossOrigin: true,
         attribution: "Tiles &copy; Esri"
       }
+    ).addTo(map);
+
+    // Relieve sombreado
+    const hillshade = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 16,
+        crossOrigin: true,
+        attribution: "Hillshade &copy; Esri"
+      }
     );
 
+    // OpenTopoMap
     const openTopo = L.tileLayer(
       "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       {
@@ -235,12 +360,21 @@
       }
     );
 
-    esriTopo.addTo(map);
+    // OpenStreetMap
+    const osm = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        crossOrigin: true,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    );
 
     const baseMaps = {
-      "Relieve · Esri": esriTopo,
+      "Topográfico con relieve y topónimos": esriTopo,
+      "Relieve sombreado": hillshade,
       "Topográfico · OpenTopo": openTopo,
-      "Calles · OSM": osm
+      "OpenStreetMap": osm
     };
 
     L.control.layers(baseMaps, null, {
@@ -279,17 +413,6 @@
         return "";
       }
 
-      /*
-        layer.date ya viene calculado correctamente desde process_aemet_peligro.py.
-
-        Ejemplo:
-        D00 -> 20260530
-        D01 -> 20260531
-        D02 -> 20260601
-
-        Aquí NO se suma otra vez el offset D00/D01/D02.
-      */
-
       const year = layer.date.slice(0, 4);
       const month = layer.date.slice(4, 6);
       const day = layer.date.slice(6, 8);
@@ -316,7 +439,7 @@
     }
 
     function setActiveButton(day) {
-      document.querySelectorAll(".controls button").forEach(btn => {
+      document.querySelectorAll(".day-controls button").forEach(btn => {
         btn.classList.remove("active");
       });
 
@@ -347,7 +470,7 @@
       cvBoundaryLayer = L.geoJSON(geojson, {
         pane: "boundaryPane",
         style: {
-          color: "#0b2f4f",
+          color: "#263d46",
           weight: 2.2,
           fill: false,
           opacity: 1
@@ -399,7 +522,6 @@
         <b>Fuente:</b> AEMET ·
         <b>Fecha:</b> ${dayLabel(layer)} ·
         <b>Archivo:</b> ${layer.source_file || ""}<br>
-        Producto automático de peligro de incendios forestales basado en datos meteorológicos.
         Recorte real a la Comunitat Valenciana.
         <br><b>Actualizado:</b> ${formatPeninsularTime(updatedUTC)} hora peninsular
       `;
@@ -414,7 +536,12 @@
       const cacheKey = updatedUTC || new Date().getTime();
       const url = currentLayerInfo.png + "?v=" + encodeURIComponent(cacheKey);
 
-      const fileDate = safeFileName(formatDateFromLayer(currentLayerInfo) || currentLayerInfo.day || "actual");
+      const fileDate = safeFileName(
+        formatDateFromLayer(currentLayerInfo) ||
+        currentLayerInfo.day ||
+        "actual"
+      );
+
       const fileName = "Peligro_incendios_AEMET_CV_" + fileDate + ".png";
 
       const link = document.createElement("a");
@@ -507,8 +634,10 @@
     .catch(error => {
       document.getElementById("layerButtons").innerHTML =
         "No se han podido cargar las capas.";
+
       document.getElementById("metadata").innerHTML =
         "Error al cargar el producto de peligro de incendios AEMET.";
+
       console.error(error);
     });
   </script>
