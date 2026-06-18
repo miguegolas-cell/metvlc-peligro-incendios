@@ -10,6 +10,9 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
 
+  <!-- Necesario para intentar descargar la vista actual del mapa -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -77,6 +80,26 @@
       background: #ff6a2a;
     }
 
+    .download-controls {
+      background: #ffffff;
+      border-bottom: 1px solid #dfe8ee;
+      padding-top: 10px;
+      padding-bottom: 12px;
+    }
+
+    .download-controls button {
+      background: #263d46;
+    }
+
+    .download-controls button:hover {
+      background: #3f6f7a;
+    }
+
+    .download-controls button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
     #map {
       width: 100%;
       height: 720px;
@@ -135,6 +158,16 @@
       Cargando capas...
     </div>
 
+    <div class="controls download-controls">
+      <button id="downloadCurrentLayerBtn" type="button">
+        Descargar imagen seleccionada
+      </button>
+
+      <button id="downloadMapViewBtn" type="button">
+        Descargar vista actual del mapa
+      </button>
+    </div>
+
     <div id="map"></div>
 
     <div class="legend">
@@ -164,6 +197,7 @@
   <script>
     let layersInfo = null;
     let currentOverlay = null;
+    let currentLayerInfo = null;
     let cvGeoJson = null;
     let cvBoundaryLayer = null;
     let cvBounds = null;
@@ -178,6 +212,7 @@
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 19,
+        crossOrigin: true,
         attribution: "&copy; OpenStreetMap"
       }
     );
@@ -186,6 +221,7 @@
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
       {
         maxZoom: 18,
+        crossOrigin: true,
         attribution: "Tiles &copy; Esri"
       }
     );
@@ -194,6 +230,7 @@
       "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 17,
+        crossOrigin: true,
         attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap"
       }
     );
@@ -270,6 +307,14 @@
       return fecha;
     }
 
+    function safeFileName(text) {
+      return String(text || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_-]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
     function setActiveButton(day) {
       document.querySelectorAll(".controls button").forEach(btn => {
         btn.classList.remove("active");
@@ -315,6 +360,8 @@
     function drawLayer(layer) {
       if (!layer) return;
 
+      currentLayerInfo = layer;
+
       if (currentOverlay) {
         map.removeLayer(currentOverlay);
       }
@@ -332,7 +379,8 @@
       currentOverlay = L.imageOverlay(pngUrl, bounds, {
         pane: "rasterPane",
         opacity: 0.90,
-        interactive: false
+        interactive: false,
+        crossOrigin: true
       }).addTo(map);
 
       setActiveButton(layer.day);
@@ -356,6 +404,76 @@
         <br><b>Actualizado:</b> ${formatPeninsularTime(updatedUTC)} hora peninsular
       `;
     }
+
+    function downloadCurrentLayer() {
+      if (!currentLayerInfo || !currentLayerInfo.png) {
+        alert("Todavía no hay ninguna imagen seleccionada.");
+        return;
+      }
+
+      const cacheKey = updatedUTC || new Date().getTime();
+      const url = currentLayerInfo.png + "?v=" + encodeURIComponent(cacheKey);
+
+      const fileDate = safeFileName(formatDateFromLayer(currentLayerInfo) || currentLayerInfo.day || "actual");
+      const fileName = "Peligro_incendios_AEMET_CV_" + fileDate + ".png";
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    async function downloadMapView() {
+      const btn = document.getElementById("downloadMapViewBtn");
+      const oldText = btn.textContent;
+
+      btn.disabled = true;
+      btn.textContent = "Generando imagen...";
+
+      try {
+        map.invalidateSize();
+
+        const mapElement = document.getElementById("map");
+
+        const canvas = await html2canvas(mapElement, {
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: null,
+          logging: false,
+          scale: 2
+        });
+
+        const fileDate = currentLayerInfo
+          ? safeFileName(formatDateFromLayer(currentLayerInfo) || currentLayerInfo.day || "actual")
+          : "actual";
+
+        const link = document.createElement("a");
+        link.download = "Vista_mapa_peligro_incendios_AEMET_CV_" + fileDate + ".png";
+        link.href = canvas.toDataURL("image/png");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+      } catch (error) {
+        alert(
+          "No se ha podido generar la vista completa del mapa. " +
+          "Algunos mapas base externos bloquean la descarga por permisos CORS. " +
+          "Puedes descargar la imagen seleccionada, que es la opción más fiable."
+        );
+        console.error(error);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+
+    document.getElementById("downloadCurrentLayerBtn")
+      .addEventListener("click", downloadCurrentLayer);
+
+    document.getElementById("downloadMapViewBtn")
+      .addEventListener("click", downloadMapView);
 
     Promise.all([
       fetch("layers.json?v=" + new Date().getTime()).then(r => {
