@@ -2,8 +2,8 @@
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
   "download_url": "https://www.aemet.es/es/api-eltiempo/incendios/download",
-  "generated_utc": "2026-06-22T20:17:32.905780+00:00",
-  "base_date_aemet": "20260621",
+  "generated_utc": "2026-06-23T17:16:56.087891+00:00",
+  "base_date_aemet": "20260622",
   "num_layers": 8,
   "layers": [
     "D00",
@@ -18,51 +18,51 @@
   "dates": [
     {
       "day": "D00",
-      "date": "20260621",
+      "date": "20260622",
       "png": "peligro_D00.png",
-      "source_file": "down_20260621_peligro_p_D00.tif"
+      "source_file": "down_20260622_peligro_p_D00.tif"
     },
     {
       "day": "D01",
-      "date": "20260622",
+      "date": "20260623",
       "png": "peligro_D01.png",
-      "source_file": "down_20260621_peligro_p_D01.tif"
+      "source_file": "down_20260622_peligro_p_D01.tif"
     },
     {
       "day": "D02",
-      "date": "20260623",
+      "date": "20260624",
       "png": "peligro_D02.png",
-      "source_file": "down_20260621_peligro_p_D02.tif"
+      "source_file": "down_20260622_peligro_p_D02.tif"
     },
     {
       "day": "D03",
-      "date": "20260624",
+      "date": "20260625",
       "png": "peligro_D03.png",
-      "source_file": "down_20260621_peligro_p_D03.tif"
+      "source_file": "down_20260622_peligro_p_D03.tif"
     },
     {
       "day": "D04",
-      "date": "20260625",
+      "date": "20260626",
       "png": "peligro_D04.png",
-      "source_file": "down_20260621_peligro_p_D04.tif"
+      "source_file": "down_20260622_peligro_p_D04.tif"
     },
     {
       "day": "D05",
-      "date": "20260626",
+      "date": "20260627",
       "png": "peligro_D05.png",
-      "source_file": "down_20260621_peligro_p_D05.tif"
+      "source_file": "down_20260622_peligro_p_D05.tif"
     },
     {
       "day": "D06",
-      "date": "20260627",
+      "date": "20260628",
       "png": "peligro_D06.png",
-      "source_file": "down_20260621_peligro_p_D06.tif"
+      "source_file": "down_20260622_peligro_p_D06.tif"
     },
     {
       "day": "D07",
-      "date": "20260628",
+      "date": "20260629",
       "png": "peligro_D07.png",
-      "source_file": "down_20260621_peligro_p_D07.tif"
+      "source_file": "down_20260622_peligro_p_D07.tif"
     }
   ],
   "note": "Se ignoran los archivos de Canarias (_c_) y se usan solo Península/Baleares (_p_). Cada PNG se recorta a la Comunitat Valenciana mediante docs/cv.geojson. El exterior del polígono queda transparente. La fecha de D00 se obtiene de la fecha incluida en el nombre de los TIFF de AEMET. D01, D02, etc. se calculan sumando días a esa fecha base."
