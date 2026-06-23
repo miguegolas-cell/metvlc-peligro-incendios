@@ -2,7 +2,7 @@
   "product": "Peligro de incendios forestales AEMET",
   "source": "AEMET",
   "download_url": "https://www.aemet.es/es/api-eltiempo/incendios/download",
-  "generated_utc": "2026-06-23T17:16:56.087891+00:00",
+  "generated_utc": "2026-06-23T17:21:35.642428+00:00",
   "base_date_aemet": "20260622",
   "num_layers": 8,
   "layers": [
